@@ -268,7 +268,9 @@ public partial class MainWindow : Window
         var sb = new StringBuilder();
         await foreach (var segment in processor.ProcessAsync(wavStream, ct))
         {
-            sb.Append(segment.Text);
+            var ts = segment.Start.ToString(@"hh\:mm\:ss");
+            sb.AppendLine($"[{ts}] {segment.Text.Trim()}");
+
             if (duration > TimeSpan.Zero)
             {
                 var pct = segment.End.TotalSeconds / duration.TotalSeconds * 100.0;
