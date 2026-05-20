@@ -188,4 +188,4 @@ Pull requests are welcome. For significant changes, please open an issue first t
 
 ## License
 
-MIT © 2026 [Upbeat Tech](https://github.com/KaiYin77)
+MIT © 2026 KaiYin Hung
