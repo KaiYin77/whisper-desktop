@@ -1,0 +1,33 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+
+# IDE and local settings
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.rsuser
+*.userosscache
+*.sln.docstates
+
+# Test and logs
+TestResults/
+*.log
+
+# Local media/transcript test files
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.webm
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.wma
+*.逐字稿.txt

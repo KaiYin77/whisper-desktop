@@ -1,0 +1,174 @@
+<Window x:Class="WhisperApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Whisper Local 逐字稿" Height="720" Width="1080" MinHeight="620" MinWidth="920"
+        Background="#F5F6F8">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="14,9" />
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="8,4" />
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#20242A" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" Margin="0,0,0,18">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock Text="Whisper Local 逐字稿" FontSize="28" FontWeight="SemiBold" />
+                <TextBlock Text="拖放影片或音訊檔，使用本機 Whisper 模型輸出逐字稿。" Foreground="#5A6370" Margin="0,5,0,0" />
+            </StackPanel>
+            <Button DockPanel.Dock="Right" Content="選擇檔案" Width="120" Click="ChooseFile_Click" />
+        </DockPanel>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Background="White"
+                    BorderBrush="#D8DDE5"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border x:Name="DropZone"
+                            Grid.Row="0"
+                            AllowDrop="True"
+                            BorderBrush="#2E6FBB"
+                            BorderThickness="2"
+                            CornerRadius="8"
+                            Padding="20"
+                            Background="#F7FAFF"
+                            DragEnter="DropZone_DragEnter"
+                            DragLeave="DropZone_DragLeave"
+                            Drop="DropZone_Drop">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="拖放檔案到這裡" FontSize="20" FontWeight="SemiBold" TextAlignment="Center" />
+                            <TextBlock Text="MP4, MOV, MKV, MP3, WAV, M4A" Foreground="#647084" TextAlignment="Center" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Grid.Row="1" Margin="0,18,0,0">
+                        <TextBlock Text="目前檔案" FontWeight="SemiBold" />
+                        <TextBlock x:Name="SelectedFileText" Text="尚未選擇" TextWrapping="Wrap" Foreground="#647084" Margin="0,6,0,0" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="2" Margin="0,18,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="本機模型" FontWeight="SemiBold" />
+                            <ComboBox x:Name="ModelCombo" SelectedIndex="1" Margin="0,6,0,0">
+                                <ComboBoxItem Content="tiny" />
+                                <ComboBoxItem Content="base" />
+                                <ComboBoxItem Content="small" />
+                                <ComboBoxItem Content="medium" />
+                                <ComboBoxItem Content="large" />
+                                <ComboBoxItem Content="large-v2" />
+                                <ComboBoxItem Content="large-v3" />
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="語言" FontWeight="SemiBold" />
+                            <ComboBox x:Name="LanguageCombo" SelectedIndex="1" Margin="0,6,0,0">
+                                <ComboBoxItem Content="auto" Tag="" />
+                                <ComboBoxItem Content="中文" Tag="zh" />
+                                <ComboBoxItem Content="English" Tag="en" />
+                                <ComboBoxItem Content="日本語" Tag="ja" />
+                                <ComboBoxItem Content="한국어" Tag="ko" />
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Grid.Row="3" Margin="0,18,0,0">
+                        <TextBlock Text="Whisper 指令" FontWeight="SemiBold" />
+                        <TextBox x:Name="CommandText"
+                                 Text="auto"
+                                 MinHeight="36"
+                                 Padding="8"
+                                 Margin="0,6,0,0"
+                                 ToolTip="auto 會依序尋找 whisper.exe、whisper、python -m whisper、py -m whisper。" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="4" Margin="0,18,0,0">
+                        <Button x:Name="StartButton" Content="開始轉錄" Click="StartButton_Click" />
+                        <Button x:Name="CancelButton" Content="取消" Click="CancelButton_Click" IsEnabled="False" Margin="0,8,0,0" />
+                        <Button x:Name="OpenOutputButton" Content="開啟逐字稿" Click="OpenOutputButton_Click" IsEnabled="False" Margin="0,8,0,0" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="5" VerticalAlignment="Bottom">
+                        <ProgressBar x:Name="ProgressBar" Height="6" IsIndeterminate="False" />
+                        <TextBlock x:Name="StatusText" Text="等待檔案" Foreground="#647084" Margin="0,8,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Background="White"
+                    BorderBrush="#D8DDE5"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                        <TextBlock Text="輸出" FontSize="18" FontWeight="SemiBold" />
+                        <Button DockPanel.Dock="Right" Content="複製" Width="88" Click="CopyOutput_Click" />
+                    </DockPanel>
+                    <TextBox x:Name="OutputText"
+                             Grid.Row="1"
+                             AcceptsReturn="True"
+                             AcceptsTab="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             FontFamily="Consolas"
+                             FontSize="14"
+                             Padding="12"
+                             IsReadOnly="True" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <TextBlock Grid.Row="2"
+                   Text="所有轉錄都透過本機 Whisper CLI 執行。首次使用某個模型時，Whisper 可能會下載模型權重到本機快取。"
+                   Foreground="#647084"
+                   Margin="0,14,0,0" />
+    </Grid>
+</Window>
