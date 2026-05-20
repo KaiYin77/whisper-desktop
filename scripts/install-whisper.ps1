@@ -21,4 +21,4 @@ if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
     }
 }
 
-Write-Host "Done. Restart WhisperApp after installation so PATH changes are loaded."
+Write-Host "Done. Restart WhisperDesktop after installation so PATH changes are loaded."

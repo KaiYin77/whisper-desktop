@@ -32,7 +32,7 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/WhisperApp-Setup.exe
+          files: dist/WhisperDesktop-Setup.exe
           generate_release_notes: true
           fail_on_unmatched_files: true
 
@@ -60,7 +60,7 @@ jobs:
 
       - name: Publish
         run: |
-          dotnet publish WhisperApp.csproj \
+          dotnet publish WhisperDesktop.csproj \
             -c Release \
             -f net8.0 \
             -r ${{ matrix.rid }} \

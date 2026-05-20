@@ -2,9 +2,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = $PSScriptRoot
-$Project = Join-Path $ProjectRoot "WhisperApp.csproj"
+$Project = Join-Path $ProjectRoot "WhisperDesktop.csproj"
 $PublishDir = Join-Path $ProjectRoot "bin\Release\net8.0\win-x64\publish"
-$IssScript = Join-Path $ProjectRoot "installer\WhisperApp.iss"
+$IssScript = Join-Path $ProjectRoot "installer\WhisperDesktop.iss"
 
 # --- Step 1: dotnet publish (self-contained, win-x64) ---
 Write-Host ">>> Building self-contained publish..." -ForegroundColor Cyan
@@ -44,6 +44,6 @@ Write-Host ">>> Compiling installer..." -ForegroundColor Cyan
 
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed (exit $LASTEXITCODE)" }
 
-$Output = Join-Path $ProjectRoot "dist\WhisperApp-Setup.exe"
+$Output = Join-Path $ProjectRoot "dist\WhisperDesktop-Setup.exe"
 Write-Host ""
 Write-Host "Done! Installer: $Output" -ForegroundColor Green

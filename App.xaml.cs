@@ -4,7 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using OpenCCNET;
 
-namespace WhisperApp;
+namespace WhisperDesktop;
 
 public partial class App : Application
 {

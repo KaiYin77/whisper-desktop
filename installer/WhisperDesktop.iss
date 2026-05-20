@@ -1,7 +1,7 @@
-#define MyAppName "WhisperApp"
+#define MyAppName "WhisperDesktop"
 #define MyAppVersion "1.0"
 #define MyAppPublisher "KaiYin Hung"
-#define MyAppExeName "WhisperApp.exe"
+#define MyAppExeName "WhisperDesktop.exe"
 #define MyAppIcon "..\app-icon.ico"
 
 [Setup]
@@ -13,7 +13,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\dist
-OutputBaseFilename=WhisperApp-Setup
+OutputBaseFilename=WhisperDesktop-Setup
 SetupIconFile={#MyAppIcon}
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -39,5 +39,5 @@ Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: 
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; \
-  Description: "啟動 WhisperApp"; \
+  Description: "啟動 WhisperDesktop"; \
   Flags: nowait postinstall skipifsilent

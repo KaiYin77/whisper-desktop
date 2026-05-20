@@ -1,6 +1,6 @@
 using Avalonia;
 
-namespace WhisperApp;
+namespace WhisperDesktop;
 
 sealed class Program
 {

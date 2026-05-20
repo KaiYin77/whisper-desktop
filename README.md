@@ -1,7 +1,7 @@
-# WhisperApp
+# WhisperDesktop
 
 <p align="center">
-  <img src="logo.png" width="80" alt="WhisperApp logo" />
+  <img src="logo.png" width="80" alt="WhisperDesktop logo" />
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@
 
 ## 下載安裝
 
-**Windows** — 至 [Releases](../../releases/latest) 下載 `WhisperApp-Setup.exe` 並執行。
+**Windows** — 至 [Releases](../../releases/latest) 下載 `WhisperDesktop-Setup.exe` 並執行。
 
 **macOS** — 先安裝 ffmpeg（僅需一次），再下載對應 zip：
 

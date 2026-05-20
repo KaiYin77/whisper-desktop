@@ -20,7 +20,7 @@ using FFMpegCore;
 using FFMpegCore.Pipes;
 #endif
 
-namespace WhisperApp;
+namespace WhisperDesktop;
 
 public partial class MainWindow : Window
 {
@@ -31,7 +31,7 @@ public partial class MainWindow : Window
 
     private static string ModelsDir => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "WhisperApp", "models");
+        "WhisperDesktop", "models");
 
     private readonly IBrush _dropZoneNormal = Brushes.Transparent;
     private readonly IBrush _dropZoneHover  = new SolidColorBrush(Color.FromRgb(245, 245, 245));
