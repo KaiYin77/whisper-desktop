@@ -45,6 +45,7 @@
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                           Margin="{TemplateBinding Padding}"
+                                          Foreground="{TemplateBinding Foreground}"
                                           Content="{TemplateBinding Content}" />
                     </Border>
                 </ControlTemplate>
