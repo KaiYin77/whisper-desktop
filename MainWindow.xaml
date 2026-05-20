@@ -234,10 +234,10 @@
                                                    VerticalAlignment="Center"
                                                    Foreground="{StaticResource WinTextSecondary}" />
                                         <Button Grid.Column="2"
-                                                Content="下載 txt"
+                                                Content="開啟 txt"
                                                 Tag="{Binding}"
                                                 IsEnabled="{Binding CanDownload}"
-                                                Click="DownloadButton_Click" />
+                                                Click="OpenTxtButton_Click" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>

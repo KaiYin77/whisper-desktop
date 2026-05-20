@@ -163,7 +163,7 @@ public partial class MainWindow : Window
     private void CancelButton_Click(object? sender, RoutedEventArgs e)
         => _transcriptionCts?.Cancel();
 
-    private async void DownloadButton_Click(object? sender, RoutedEventArgs e)
+    private void OpenTxtButton_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
@@ -175,24 +175,16 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                Title            = "Save transcript",
-                SuggestedFileName = Path.GetFileName(job.OutputPath),
-                FileTypeChoices  = [new FilePickerFileType("Text file") { Patterns = ["*.txt"] }],
-                DefaultExtension = "txt"
+                FileName        = job.OutputPath,
+                UseShellExecute = true
             });
-
-            if (file == null) return;
-
-            await using var dest = await file.OpenWriteAsync();
-            await using var src  = File.OpenRead(job.OutputPath);
-            await src.CopyToAsync(dest);
-            SetStatus($"Saved to {file.Path.LocalPath}");
+            SetStatus($"Opened {Path.GetFileName(job.OutputPath)}");
         }
         catch (Exception ex)
         {
-            SetStatus($"Save failed: {ex.Message}");
+            SetStatus($"Open failed: {ex.Message}");
         }
     }
 
