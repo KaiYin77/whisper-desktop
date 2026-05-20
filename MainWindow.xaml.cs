@@ -1,3 +1,4 @@
+using Microsoft.VisualBasic;
 using Microsoft.Win32;
 using NAudio.Wave;
 using System.Collections.ObjectModel;
@@ -278,8 +279,11 @@ public partial class MainWindow : Window
             }
         }
 
-        return sb.ToString().Trim();
+        return ToTraditionalChinese(sb.ToString().Trim());
     }
+
+    private static string ToTraditionalChinese(string text)
+        => Strings.StrConv(text, VbStrConv.TraditionalChinese, 0x0404) ?? text;
 
     private static GgmlType MapGgmlType(string model) => model switch
     {
