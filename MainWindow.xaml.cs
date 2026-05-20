@@ -1,7 +1,7 @@
 using Microsoft.Win32;
+using NAudio.Wave;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Whisper.net;
 using Whisper.net.Ggml;
+
 
 namespace WhisperApp;
 
@@ -190,14 +191,13 @@ public partial class MainWindow : Window
         SetStatus($"Transcribing {job.FileName}");
         AppendLog($"[{job.FileName}] starting");
 
-        string? tempWav = null;
         try
         {
-            SetStatus($"Extracting audio — {job.FileName}");
-            tempWav = await ExtractAudioAsync(job.FilePath, ct);
+            SetStatus($"Decoding audio — {job.FileName}");
+            using var wavStream = await Task.Run(() => DecodeToWav(job.FilePath), ct);
 
             SetStatus($"Transcribing — {job.FileName}");
-            var transcript = await TranscribeAsync(modelPath, tempWav, language, ct);
+            var transcript = await TranscribeAsync(modelPath, wavStream, language, ct);
 
             var outputDir = Path.GetDirectoryName(job.FilePath) ?? Environment.CurrentDirectory;
             var outputPath = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(job.FilePath)}.逐字稿.txt");
@@ -214,11 +214,6 @@ public partial class MainWindow : Window
             job.Status = "Failed";
             job.Error = ex.Message;
             AppendLog($"[{job.FileName}] failed: {ex.Message}");
-        }
-        finally
-        {
-            if (tempWav is not null && File.Exists(tempWav))
-                File.Delete(tempWav);
         }
     }
 
@@ -244,38 +239,21 @@ public partial class MainWindow : Window
         return modelPath;
     }
 
-    private static async Task<string> ExtractAudioAsync(string inputPath, CancellationToken ct)
+    // Decode any audio/video file to 16 kHz mono WAV in memory using Windows Media Foundation.
+    // No external tools required — works on Windows 10/11 out of the box.
+    private static MemoryStream DecodeToWav(string inputPath)
     {
-        var tempWav = Path.Combine(Path.GetTempPath(), $"whisperapp_{Guid.NewGuid():N}.wav");
+        using var reader = new MediaFoundationReader(inputPath);
+        var targetFormat = new WaveFormat(16000, 16, 1);
+        using var resampler = new MediaFoundationResampler(reader, targetFormat) { ResamplerQuality = 60 };
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            UseShellExecute = false,
-            RedirectStandardError = true,
-            CreateNoWindow = true
-        };
-        psi.ArgumentList.Add("-y");
-        psi.ArgumentList.Add("-i");  psi.ArgumentList.Add(inputPath);
-        psi.ArgumentList.Add("-ar"); psi.ArgumentList.Add("16000");
-        psi.ArgumentList.Add("-ac"); psi.ArgumentList.Add("1");
-        psi.ArgumentList.Add(tempWav);
-
-        using var proc = new Process { StartInfo = psi };
-
-        if (!proc.Start())
-            throw new InvalidOperationException("ffmpeg not found. Install via: winget install Gyan.FFmpeg");
-
-        var stderr = await proc.StandardError.ReadToEndAsync(ct);
-        await proc.WaitForExitAsync(ct);
-
-        if (proc.ExitCode != 0)
-            throw new InvalidOperationException($"ffmpeg failed (exit {proc.ExitCode}).\n{stderr.Trim()}");
-
-        return tempWav;
+        var ms = new MemoryStream();
+        WaveFileWriter.WriteWavFileToStream(ms, resampler);
+        ms.Position = 0;
+        return ms;
     }
 
-    private async Task<string> TranscribeAsync(string modelPath, string wavPath, string language, CancellationToken ct)
+    private async Task<string> TranscribeAsync(string modelPath, Stream wavStream, string language, CancellationToken ct)
     {
         using var factory = WhisperFactory.FromPath(modelPath);
         var builder = factory.CreateBuilder();
@@ -284,7 +262,6 @@ public partial class MainWindow : Window
             builder.WithLanguage(language);
 
         using var processor = builder.Build();
-        await using var wavStream = File.OpenRead(wavPath);
 
         var sb = new StringBuilder();
         await foreach (var segment in processor.ProcessAsync(wavStream, ct))
