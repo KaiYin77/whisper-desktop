@@ -194,10 +194,11 @@ public partial class MainWindow : Window
         try
         {
             SetStatus($"Decoding audio — {job.FileName}");
-            using var wavStream = await Task.Run(() => DecodeToWav(job.FilePath), ct);
+            var (wavStream, audioDuration) = await Task.Run(() => DecodeToWav(job.FilePath), ct);
+            using var _ = wavStream;
 
             SetStatus($"Transcribing — {job.FileName}");
-            var transcript = await TranscribeAsync(modelPath, wavStream, language, ct);
+            var transcript = await TranscribeAsync(modelPath, wavStream, audioDuration, language, ct);
 
             var outputDir = Path.GetDirectoryName(job.FilePath) ?? Environment.CurrentDirectory;
             var outputPath = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(job.FilePath)}-逐字稿.txt");
@@ -239,21 +240,22 @@ public partial class MainWindow : Window
         return modelPath;
     }
 
-    // Decode any audio/video file to 16 kHz mono WAV in memory using Windows Media Foundation.
-    // No external tools required — works on Windows 10/11 out of the box.
-    private static MemoryStream DecodeToWav(string inputPath)
+    // Decode any audio/video file to 16 kHz mono WAV in memory via Windows Media Foundation.
+    private static (MemoryStream wav, TimeSpan duration) DecodeToWav(string inputPath)
     {
         using var reader = new MediaFoundationReader(inputPath);
+        var duration = reader.TotalTime;
         var targetFormat = new WaveFormat(16000, 16, 1);
         using var resampler = new MediaFoundationResampler(reader, targetFormat) { ResamplerQuality = 60 };
 
         var ms = new MemoryStream();
         WaveFileWriter.WriteWavFileToStream(ms, resampler);
         ms.Position = 0;
-        return ms;
+        return (ms, duration);
     }
 
-    private async Task<string> TranscribeAsync(string modelPath, Stream wavStream, string language, CancellationToken ct)
+    private async Task<string> TranscribeAsync(
+        string modelPath, Stream wavStream, TimeSpan duration, string language, CancellationToken ct)
     {
         using var factory = WhisperFactory.FromPath(modelPath);
         var builder = factory.CreateBuilder();
@@ -265,7 +267,14 @@ public partial class MainWindow : Window
 
         var sb = new StringBuilder();
         await foreach (var segment in processor.ProcessAsync(wavStream, ct))
+        {
             sb.Append(segment.Text);
+            if (duration > TimeSpan.Zero)
+            {
+                var pct = segment.End.TotalSeconds / duration.TotalSeconds * 100.0;
+                Dispatcher.Invoke(() => ProgressBar.Value = Math.Clamp(pct, 0, 100));
+            }
+        }
 
         return sb.ToString().Trim();
     }
