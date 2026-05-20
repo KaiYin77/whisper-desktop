@@ -94,6 +94,9 @@
             <Setter Property="Background" Value="{StaticResource WinCard}" />
             <Setter Property="Foreground" Value="{StaticResource WinTextPrimary}" />
         </Style>
+        <Style Selector="Button.primary TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
     </Window.Styles>
 
     <Border Margin="10"
