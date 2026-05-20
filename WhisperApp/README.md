@@ -188,6 +188,4 @@ Pull requests are welcome. For significant changes, please open an issue first t
 
 ## License
 
-Copyright © 2025 Upbeat Tech. Released under the [MIT License](LICENSE).
-
-> Permission is hereby granted, free of charge, to any person obtaining a copy of this software to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies, subject to the MIT license terms in [LICENSE](LICENSE).
+MIT © 2026 [Upbeat Tech](https://github.com/KaiYin77)

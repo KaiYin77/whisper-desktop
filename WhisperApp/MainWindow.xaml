@@ -223,6 +223,7 @@
                     BorderThickness="1"
                     CornerRadius="8"
                     Padding="22"
+                    Cursor="Hand"
                     MouseEnter="DropZone_MouseEnter"
                     MouseLeave="DropZone_MouseLeave"
                     MouseLeftButtonUp="DropZone_MouseLeftButtonUp"
