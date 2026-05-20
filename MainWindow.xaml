@@ -77,10 +77,21 @@
         <Style Selector="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource WinTextPrimary}" />
         </Style>
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="{StaticResource WinCard}" />
+            <Setter Property="Foreground" Value="{StaticResource WinTextPrimary}" />
+        </Style>
         <Style Selector="ComboBox">
-            <Setter Property="MinHeight" Value="32" />
-            <Setter Property="MinWidth"  Value="124" />
-            <Setter Property="FontSize"  Value="14" />
+            <Setter Property="MinHeight"   Value="32" />
+            <Setter Property="MinWidth"    Value="124" />
+            <Setter Property="FontSize"    Value="14" />
+            <Setter Property="Background"  Value="{StaticResource WinControl}" />
+            <Setter Property="Foreground"  Value="{StaticResource WinTextPrimary}" />
+            <Setter Property="BorderBrush" Value="{StaticResource WinStroke}" />
+        </Style>
+        <Style Selector="ComboBoxItem">
+            <Setter Property="Background" Value="{StaticResource WinCard}" />
+            <Setter Property="Foreground" Value="{StaticResource WinTextPrimary}" />
         </Style>
     </Window.Styles>
 
