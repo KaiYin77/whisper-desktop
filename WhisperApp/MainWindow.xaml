@@ -209,30 +209,14 @@
         <Grid Margin="24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center"
-                        Margin="0,0,0,16">
-                <Image Source="logo.png"
-                       Width="28"
-                       Height="28"
-                       Margin="0,0,10,0"
-                       VerticalAlignment="Center"
-                       RenderOptions.BitmapScalingMode="HighQuality" />
-                <TextBlock Text="OpenAI Whisper &#x9010;&#x5B57;&#x7A3F;"
-                           FontSize="18"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center" />
-            </StackPanel>
 
             <Border x:Name="DropZone"
-                    Grid.Row="1"
+                    Grid.Row="0"
                     AllowDrop="True"
                     Background="#FAFAFA"
                     BorderBrush="{StaticResource WinStroke}"
@@ -257,12 +241,16 @@
                             CornerRadius="6"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center">
-                        <TextBlock Text="&#xE8A5;"
-                                   FontFamily="Segoe MDL2 Assets"
-                                   FontSize="22"
-                                   Foreground="{StaticResource WinAccent}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
+                        <Viewbox Width="20" Height="24"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center">
+                            <Canvas Width="20" Height="24">
+                                <Path Fill="{StaticResource WinAccent}"
+                                      Data="M 2,0 L 13,0 L 20,7 L 20,22 Q 20,24 18,24 L 2,24 Q 0,24 0,22 L 0,2 Q 0,0 2,0 Z" />
+                                <Path Fill="#60FFFFFF"
+                                      Data="M 13,0 L 20,7 L 13,7 Z" />
+                            </Canvas>
+                        </Viewbox>
                     </Border>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -277,7 +265,7 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="2" Margin="0,16,0,0">
+            <Grid Grid.Row="1" Margin="0,16,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -379,7 +367,7 @@
                 </ListView>
             </Grid>
 
-            <Grid Grid.Row="3" Margin="0,12,0,0">
+            <Grid Grid.Row="2" Margin="0,12,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -406,7 +394,7 @@
                          Padding="8" />
             </Grid>
 
-            <Grid Grid.Row="4" Margin="0,12,0,0">
+            <Grid Grid.Row="3" Margin="0,12,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
