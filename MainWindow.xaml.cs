@@ -1,5 +1,5 @@
-using Microsoft.VisualBasic;
 using Microsoft.Win32;
+using OpenCCNET;
 using NAudio.Wave;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -283,7 +283,7 @@ public partial class MainWindow : Window
     }
 
     private static string ToTraditionalChinese(string text)
-        => Strings.StrConv(text, VbStrConv.TraditionalChinese, 0x0404) ?? text;
+        => ZhConverter.HansToTW(text);
 
     private static GgmlType MapGgmlType(string model) => model switch
     {
