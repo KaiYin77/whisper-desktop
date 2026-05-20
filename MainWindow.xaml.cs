@@ -8,6 +8,8 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Whisper.net;
+using Whisper.net.Ggml;
 
 namespace WhisperApp;
 
@@ -17,6 +19,10 @@ public partial class MainWindow : Window
     {
         ".mp4", ".mov", ".mkv", ".avi", ".webm", ".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".wma"
     };
+
+    private static string ModelsDir => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "WhisperApp", "models");
 
     private readonly Brush _dropZoneNormal = Brushes.White;
     private readonly Brush _dropZoneHover = new SolidColorBrush(Color.FromRgb(245, 245, 245));
@@ -35,14 +41,10 @@ public partial class MainWindow : Window
     private void DropZone_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e) => ChooseFiles();
 
     private void DropZone_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
-    {
-        DropZone.Background = _dropZoneHover;
-    }
+        => DropZone.Background = _dropZoneHover;
 
     private void DropZone_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
-    {
-        DropZone.Background = _dropZoneNormal;
-    }
+        => DropZone.Background = _dropZoneNormal;
 
     private void ChooseFiles()
     {
@@ -54,9 +56,7 @@ public partial class MainWindow : Window
         };
 
         if (dialog.ShowDialog(this) == true)
-        {
             AddFiles(dialog.FileNames);
-        }
     }
 
     private void DropZone_DragEnter(object sender, DragEventArgs e)
@@ -67,9 +67,7 @@ public partial class MainWindow : Window
     }
 
     private void DropZone_DragLeave(object sender, DragEventArgs e)
-    {
-        DropZone.Background = _dropZoneNormal;
-    }
+        => DropZone.Background = _dropZoneNormal;
 
     private void DropZone_Drop(object sender, DragEventArgs e)
     {
@@ -78,10 +76,8 @@ public partial class MainWindow : Window
         if (files.Length == 0)
         {
             SetStatus("No supported files found.");
-            AppendLog("Drop ignored: no supported files.");
             return;
         }
-
         AddFiles(files);
     }
 
@@ -91,7 +87,6 @@ public partial class MainWindow : Window
         if (pendingJobs.Count == 0)
         {
             SetStatus("No files to transcribe.");
-            AppendLog("Start ignored: no pending jobs.");
             return;
         }
 
@@ -102,6 +97,11 @@ public partial class MainWindow : Window
 
         try
         {
+            var modelName = ((ComboBoxItem)ModelCombo.SelectedItem).Content?.ToString() ?? "base";
+            var languageTag = ((ComboBoxItem)LanguageCombo.SelectedItem).Tag?.ToString() ?? "";
+
+            var modelPath = await EnsureModelAsync(modelName, _transcriptionCts.Token);
+
             var completedBeforeRun = Jobs.Count(job => job.State == JobState.Completed);
             var totalForProgress = completedBeforeRun + pendingJobs.Count;
             var done = completedBeforeRun;
@@ -110,42 +110,7 @@ public partial class MainWindow : Window
             foreach (var job in pendingJobs)
             {
                 _transcriptionCts.Token.ThrowIfCancellationRequested();
-
-                job.State = JobState.Running;
-                job.Status = "Running";
-                SetStatus($"Transcribing {job.FileName}");
-                AppendLog($"[{job.FileName}] starting");
-
-                var request = BuildRequest(job.FilePath);
-                var result = await RunWhisperAsync(request, _transcriptionCts.Token);
-
-                if (result.ExitCode != 0)
-                {
-                    job.State = JobState.Failed;
-                    job.Status = "Failed";
-                    job.Error = result.Output.Trim();
-                    AppendLog($"[{job.FileName}] failed with exit code {result.ExitCode}");
-                    if (!string.IsNullOrWhiteSpace(result.Output))
-                    {
-                        AppendLog(result.Output.Trim());
-                    }
-                }
-                else
-                {
-                    var transcript = LoadTranscript(request.OutputPath);
-                    if (string.IsNullOrWhiteSpace(transcript))
-                    {
-                        transcript = result.Output.Trim();
-                    }
-
-                    File.WriteAllText(request.OutputPath, transcript, Encoding.UTF8);
-                    job.OutputPath = request.OutputPath;
-                    job.State = JobState.Completed;
-                    job.Status = "Done";
-                    AppendLog($"[{job.FileName}] completed");
-                    AppendLog($"[{job.FileName}] output: {request.OutputPath}");
-                }
-
+                await TranscribeJobAsync(job, modelPath, languageTag, _transcriptionCts.Token);
                 done++;
                 UpdateProgress(done, totalForProgress);
             }
@@ -160,13 +125,12 @@ public partial class MainWindow : Window
                 job.State = JobState.Pending;
                 job.Status = "Waiting";
             }
-
             SetStatus("Canceled.");
             AppendLog("Canceled.");
         }
         catch (Exception ex)
         {
-            SetStatus($"Transcription failed: {ex.Message}");
+            SetStatus($"Error: {ex.Message}");
             AppendLog(ex.ToString());
         }
         finally
@@ -178,16 +142,15 @@ public partial class MainWindow : Window
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)
-    {
-        _transcriptionCts?.Cancel();
-    }
+        => _transcriptionCts?.Cancel();
 
     private void DownloadButton_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as Button)?.Tag is not TranscriptJob job || string.IsNullOrWhiteSpace(job.OutputPath) || !File.Exists(job.OutputPath))
+        if ((sender as Button)?.Tag is not TranscriptJob job
+            || string.IsNullOrWhiteSpace(job.OutputPath)
+            || !File.Exists(job.OutputPath))
         {
             SetStatus("Transcript file not found.");
-            AppendLog("Download ignored: transcript file missing.");
             return;
         }
 
@@ -203,35 +166,160 @@ public partial class MainWindow : Window
         {
             File.Copy(job.OutputPath, dialog.FileName, overwrite: true);
             SetStatus($"Saved to {dialog.FileName}");
-            AppendLog($"Downloaded: {dialog.FileName}");
         }
     }
 
     private void ClearCompleted_Click(object sender, RoutedEventArgs e)
     {
-        for (var index = Jobs.Count - 1; index >= 0; index--)
+        for (var i = Jobs.Count - 1; i >= 0; i--)
         {
-            if (Jobs[index].State == JobState.Completed)
-            {
-                Jobs.RemoveAt(index);
-            }
+            if (Jobs[i].State == JobState.Completed)
+                Jobs.RemoveAt(i);
         }
 
-        UpdateProgress(Jobs.Count(job => job.State == JobState.Completed), Math.Max(Jobs.Count, 1));
+        UpdateProgress(Jobs.Count(j => j.State == JobState.Completed), Math.Max(Jobs.Count, 1));
         SetStatus(Jobs.Count == 0 ? "Waiting for files." : "Completed items cleared.");
     }
+
+    // ── Core transcription pipeline ──────────────────────────────────────────
+
+    private async Task TranscribeJobAsync(TranscriptJob job, string modelPath, string language, CancellationToken ct)
+    {
+        job.State = JobState.Running;
+        job.Status = "Running";
+        SetStatus($"Transcribing {job.FileName}");
+        AppendLog($"[{job.FileName}] starting");
+
+        string? tempWav = null;
+        try
+        {
+            SetStatus($"Extracting audio — {job.FileName}");
+            tempWav = await ExtractAudioAsync(job.FilePath, ct);
+
+            SetStatus($"Transcribing — {job.FileName}");
+            var transcript = await TranscribeAsync(modelPath, tempWav, language, ct);
+
+            var outputDir = Path.GetDirectoryName(job.FilePath) ?? Environment.CurrentDirectory;
+            var outputPath = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(job.FilePath)}.逐字稿.txt");
+            await File.WriteAllTextAsync(outputPath, transcript, Encoding.UTF8, ct);
+
+            job.OutputPath = outputPath;
+            job.State = JobState.Completed;
+            job.Status = "Done";
+            AppendLog($"[{job.FileName}] → {outputPath}");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            job.State = JobState.Failed;
+            job.Status = "Failed";
+            job.Error = ex.Message;
+            AppendLog($"[{job.FileName}] failed: {ex.Message}");
+        }
+        finally
+        {
+            if (tempWav is not null && File.Exists(tempWav))
+                File.Delete(tempWav);
+        }
+    }
+
+    private async Task<string> EnsureModelAsync(string modelName, CancellationToken ct)
+    {
+        Directory.CreateDirectory(ModelsDir);
+        var modelPath = Path.Combine(ModelsDir, $"ggml-{modelName}.bin");
+
+        if (File.Exists(modelPath))
+        {
+            AppendLog($"Model '{modelName}' loaded from cache.");
+            return modelPath;
+        }
+
+        AppendLog($"Downloading model '{modelName}' — first run only, please wait...");
+        SetStatus($"Downloading model '{modelName}'...");
+
+        await using var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(MapGgmlType(modelName));
+        await using var fileStream = File.Create(modelPath);
+        await modelStream.CopyToAsync(fileStream, ct);
+
+        AppendLog($"Model '{modelName}' downloaded and cached.");
+        return modelPath;
+    }
+
+    private static async Task<string> ExtractAudioAsync(string inputPath, CancellationToken ct)
+    {
+        var tempWav = Path.Combine(Path.GetTempPath(), $"whisperapp_{Guid.NewGuid():N}.wav");
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = "ffmpeg",
+            UseShellExecute = false,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+        psi.ArgumentList.Add("-y");
+        psi.ArgumentList.Add("-i");  psi.ArgumentList.Add(inputPath);
+        psi.ArgumentList.Add("-ar"); psi.ArgumentList.Add("16000");
+        psi.ArgumentList.Add("-ac"); psi.ArgumentList.Add("1");
+        psi.ArgumentList.Add(tempWav);
+
+        using var proc = new Process { StartInfo = psi };
+
+        if (!proc.Start())
+            throw new InvalidOperationException("ffmpeg not found. Install via: winget install Gyan.FFmpeg");
+
+        var stderr = await proc.StandardError.ReadToEndAsync(ct);
+        await proc.WaitForExitAsync(ct);
+
+        if (proc.ExitCode != 0)
+            throw new InvalidOperationException($"ffmpeg failed (exit {proc.ExitCode}).\n{stderr.Trim()}");
+
+        return tempWav;
+    }
+
+    private async Task<string> TranscribeAsync(string modelPath, string wavPath, string language, CancellationToken ct)
+    {
+        using var factory = WhisperFactory.FromPath(modelPath);
+        var builder = factory.CreateBuilder();
+
+        if (!string.IsNullOrEmpty(language))
+            builder.WithLanguage(language);
+
+        using var processor = builder.Build();
+        await using var wavStream = File.OpenRead(wavPath);
+
+        var sb = new StringBuilder();
+        await foreach (var segment in processor.ProcessAsync(wavStream, ct))
+        {
+            sb.Append(segment.Text);
+            var text = segment.Text;
+            Dispatcher.Invoke(() => AppendLog(text));
+        }
+
+        return sb.ToString().Trim();
+    }
+
+    private static GgmlType MapGgmlType(string model) => model switch
+    {
+        "tiny"     => GgmlType.Tiny,
+        "base"     => GgmlType.Base,
+        "small"    => GgmlType.Small,
+        "medium"   => GgmlType.Medium,
+        "large"    => GgmlType.LargeV1,
+        "large-v2" => GgmlType.LargeV2,
+        "large-v3" => GgmlType.LargeV3,
+        _          => GgmlType.Base
+    };
+
+    // ── UI helpers ───────────────────────────────────────────────────────────
 
     private void AddFiles(IEnumerable<string> files)
     {
         var added = 0;
-        var existing = Jobs.Select(job => job.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var existing = Jobs.Select(j => j.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var file in files.Where(File.Exists))
         {
             if (!SupportedExtensions.Contains(Path.GetExtension(file)) || existing.Contains(file))
-            {
                 continue;
-            }
 
             Jobs.Add(new TranscriptJob(file));
             existing.Add(file);
@@ -239,127 +327,7 @@ public partial class MainWindow : Window
         }
 
         SetStatus(added == 0 ? "No new files added." : $"Added {added} file(s).");
-        UpdateProgress(Jobs.Count(job => job.State == JobState.Completed), Math.Max(Jobs.Count, 1));
-    }
-
-    private WhisperRequest BuildRequest(string mediaPath)
-    {
-        var model = ((ComboBoxItem)ModelCombo.SelectedItem).Content?.ToString() ?? "base";
-        var languageTag = ((ComboBoxItem)LanguageCombo.SelectedItem).Tag?.ToString() ?? "";
-        var outputDirectory = Path.GetDirectoryName(mediaPath) ?? Environment.CurrentDirectory;
-        var outputPath = Path.Combine(outputDirectory, $"{Path.GetFileNameWithoutExtension(mediaPath)}.逐字稿.txt");
-        var command = ResolveCommand();
-
-        var arguments = new List<string>(command.BaseArguments)
-        {
-            mediaPath,
-            "--model", model,
-            "--task", "transcribe",
-            "--output_format", "txt",
-            "--output_dir", outputDirectory
-        };
-
-        if (!string.IsNullOrWhiteSpace(languageTag))
-        {
-            arguments.Add("--language");
-            arguments.Add(languageTag);
-        }
-
-        return new WhisperRequest(command.Executable, arguments, outputPath);
-    }
-
-    private static WhisperCommand ResolveCommand()
-    {
-        if (CommandExists("whisper.exe"))
-        {
-            return new WhisperCommand("whisper.exe", []);
-        }
-
-        if (CommandExists("whisper"))
-        {
-            return new WhisperCommand("whisper", []);
-        }
-
-        if (CommandExists("py"))
-        {
-            return new WhisperCommand("py", ["-3.12", "-m", "whisper"]);
-        }
-
-        if (CommandExists("python"))
-        {
-            return new WhisperCommand("python", ["-m", "whisper"]);
-        }
-
-        throw new InvalidOperationException("Whisper CLI not found. Install openai-whisper and ffmpeg first.");
-    }
-
-    private async Task<ProcessResult> RunWhisperAsync(WhisperRequest request, CancellationToken cancellationToken)
-    {
-        var output = new StringBuilder();
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = request.Executable,
-            UseShellExecute = false,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            CreateNoWindow = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
-        };
-
-        foreach (var argument in request.Arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
-        process.OutputDataReceived += (_, args) => AppendProcessLine(args.Data, output);
-        process.ErrorDataReceived += (_, args) => AppendProcessLine(args.Data, output);
-
-        AppendLog($"Launching: {request.Executable}");
-
-        if (!process.Start())
-        {
-            throw new InvalidOperationException("Failed to start Whisper process.");
-        }
-
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-        await process.WaitForExitAsync(cancellationToken);
-
-        return new ProcessResult(process.ExitCode, output.ToString());
-    }
-
-    private void AppendProcessLine(string? line, StringBuilder output)
-    {
-        if (string.IsNullOrWhiteSpace(line))
-        {
-            return;
-        }
-
-        output.AppendLine(line);
-        Dispatcher.Invoke(() => AppendLog(line));
-    }
-
-    private static string LoadTranscript(string expectedOutputPath)
-    {
-        if (File.Exists(expectedOutputPath))
-        {
-            return File.ReadAllText(expectedOutputPath, Encoding.UTF8);
-        }
-
-        var directory = Path.GetDirectoryName(expectedOutputPath);
-        var fileName = Path.GetFileNameWithoutExtension(expectedOutputPath).Replace(".逐字稿", "", StringComparison.Ordinal);
-        var whisperOutputPath = directory is null ? $"{fileName}.txt" : Path.Combine(directory, $"{fileName}.txt");
-
-        if (!File.Exists(whisperOutputPath))
-        {
-            return "";
-        }
-
-        var transcript = File.ReadAllText(whisperOutputPath, Encoding.UTF8);
-        File.Copy(whisperOutputPath, expectedOutputPath, overwrite: true);
-        return transcript;
+        UpdateProgress(Jobs.Count(j => j.State == JobState.Completed), Math.Max(Jobs.Count, 1));
     }
 
     private void SetBusy(bool isBusy)
@@ -370,10 +338,7 @@ public partial class MainWindow : Window
         LanguageCombo.IsEnabled = !isBusy;
     }
 
-    private void SetStatus(string message)
-    {
-        StatusText.Text = message;
-    }
+    private void SetStatus(string message) => StatusText.Text = message;
 
     private void AppendLog(string message)
     {
@@ -381,49 +346,22 @@ public partial class MainWindow : Window
         LogText.ScrollToEnd();
     }
 
-    private void ClearLog()
-    {
-        LogText.Clear();
-    }
+    private void ClearLog() => LogText.Clear();
 
     private void UpdateProgress(int completed, int total)
-    {
-        ProgressBar.Value = total <= 0 ? 0 : completed * 100.0 / total;
-    }
+        => ProgressBar.Value = total <= 0 ? 0 : completed * 100.0 / total;
 
     private static IEnumerable<string> GetUsableFiles(DragEventArgs e)
     {
         if (!e.Data.GetDataPresent(DataFormats.FileDrop))
-        {
             return [];
-        }
 
         var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-        return files.Where(file => File.Exists(file) && SupportedExtensions.Contains(Path.GetExtension(file)));
+        return files.Where(f => File.Exists(f) && SupportedExtensions.Contains(Path.GetExtension(f)));
     }
-
-    private static bool CommandExists(string command)
-    {
-        var paths = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator);
-        var candidates = Path.HasExtension(command)
-            ? paths.Select(path => Path.Combine(path, command))
-            : paths.SelectMany(path => new[] { Path.Combine(path, command), Path.Combine(path, $"{command}.exe") });
-
-        return candidates.Any(File.Exists);
-    }
-
-    private sealed record WhisperCommand(string Executable, List<string> BaseArguments);
-    private sealed record WhisperRequest(string Executable, List<string> Arguments, string OutputPath);
-    private sealed record ProcessResult(int ExitCode, string Output);
 }
 
-public enum JobState
-{
-    Pending,
-    Running,
-    Completed,
-    Failed
-}
+public enum JobState { Pending, Running, Completed, Failed }
 
 public sealed class TranscriptJob : INotifyPropertyChanged
 {
@@ -450,13 +388,7 @@ public sealed class TranscriptJob : INotifyPropertyChanged
     public string? OutputPath
     {
         get => _outputPath;
-        set
-        {
-            if (SetField(ref _outputPath, value))
-            {
-                OnPropertyChanged(nameof(CanDownload));
-            }
-        }
+        set { if (SetField(ref _outputPath, value)) OnPropertyChanged(nameof(CanDownload)); }
     }
 
     public string? Error
@@ -468,33 +400,22 @@ public sealed class TranscriptJob : INotifyPropertyChanged
     public JobState State
     {
         get => _state;
-        set
-        {
-            if (SetField(ref _state, value))
-            {
-                OnPropertyChanged(nameof(CanDownload));
-            }
-        }
+        set { if (SetField(ref _state, value)) OnPropertyChanged(nameof(CanDownload)); }
     }
 
-    public bool CanDownload => State == JobState.Completed && !string.IsNullOrWhiteSpace(OutputPath) && File.Exists(OutputPath);
+    public bool CanDownload =>
+        State == JobState.Completed && !string.IsNullOrWhiteSpace(OutputPath) && File.Exists(OutputPath);
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-        {
-            return false;
-        }
-
+        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
         field = value;
         OnPropertyChanged(propertyName);
         return true;
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
