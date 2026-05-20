@@ -18,11 +18,13 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed (exit $LASTEXITCODE)" }
 Write-Host "    Published to: $PublishDir" -ForegroundColor Green
 
 # --- Step 2: Find Inno Setup compiler (ISCC.exe) ---
+$isccOnPath = Get-Command ISCC.exe -ErrorAction SilentlyContinue
 $IssccCandidates = @(
     "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
-    "C:\Program Files\Inno Setup 6\ISCC.exe",
-    (Get-Command ISCC.exe -ErrorAction SilentlyContinue)?.Source
-) | Where-Object { $_ -and (Test-Path $_) }
+    "C:\Program Files\Inno Setup 6\ISCC.exe"
+)
+if ($isccOnPath) { $IssccCandidates += $isccOnPath.Source }
+$IssccCandidates = $IssccCandidates | Where-Object { $_ -and (Test-Path $_) }
 
 if (-not $IssccCandidates) {
     Write-Host ""
