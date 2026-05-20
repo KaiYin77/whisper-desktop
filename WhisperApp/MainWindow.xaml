@@ -251,12 +251,19 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Image Source="logo.png"
-                           Width="42"
-                           Height="42"
-                           HorizontalAlignment="Left"
-                           VerticalAlignment="Center"
-                           RenderOptions.BitmapScalingMode="HighQuality" />
+                    <Border Width="42"
+                            Height="42"
+                            Background="{StaticResource WinAccentSoft}"
+                            CornerRadius="6"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="&#xE8A5;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="22"
+                                   Foreground="{StaticResource WinAccent}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="&#x62D6;&#x66F3;&#x97F3;&#x8A0A;&#x6216;&#x5F71;&#x7247;&#x5230;&#x9019;&#x88E1;&#xFF0C;&#x6216;&#x9EDE;&#x64CA;&#x9078;&#x64C7;&#x6A94;&#x6848;"
