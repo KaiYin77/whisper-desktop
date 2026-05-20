@@ -1,6 +1,6 @@
 #define MyAppName "WhisperApp"
 #define MyAppVersion "1.0"
-#define MyAppPublisher "Upbeat Tech"
+#define MyAppPublisher "KaiYin Hung"
 #define MyAppExeName "WhisperApp.exe"
 #define MyAppIcon "..\app-icon.ico"
 
@@ -28,11 +28,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "建立桌面捷徑"; GroupDescription: "額外圖示："
-Name: "installwhisper"; Description: "安裝 Whisper 相依套件 (Python openai-whisper + ffmpeg)"; GroupDescription: "相依套件："; Flags: unchecked
 
 [Files]
-Source: "..\bin\Release\net8.0-windows\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\scripts\install-whisper.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
+Source: "..\bin\Release\net8.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -40,12 +38,6 @@ Name: "{group}\解除安裝 {#MyAppName}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "powershell.exe"; \
-  Parameters: "-NoProfile -ExecutionPolicy Bypass -NonInteractive -WindowStyle Normal -File ""{app}\scripts\install-whisper.ps1"""; \
-  StatusMsg: "安裝 Whisper 相依套件中，請稍候..."; \
-  Tasks: installwhisper; \
-  Flags: waituntilterminated
-
 Filename: "{app}\{#MyAppExeName}"; \
   Description: "啟動 WhisperApp"; \
   Flags: nowait postinstall skipifsilent

@@ -9,9 +9,9 @@ permissions:
   contents: write
 
 jobs:
-  build-installer:
+  # ── Windows installer (.exe) ──────────────────────────────────────────────
+  build-windows:
     runs-on: windows-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,4 +34,46 @@ jobs:
         with:
           files: dist/WhisperApp-Setup.exe
           generate_release_notes: true
+          fail_on_unmatched_files: true
+
+  # ── macOS app bundle (.zip) ───────────────────────────────────────────────
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - rid: osx-arm64
+            label: macOS-Apple-Silicon
+          - rid: osx-x64
+            label: macOS-Intel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install ffmpeg
+        run: brew install ffmpeg
+
+      - name: Publish
+        run: |
+          dotnet publish WhisperApp.csproj \
+            -c Release \
+            -f net8.0 \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -o publish/${{ matrix.rid }}
+
+      - name: Create zip
+        run: |
+          cd publish
+          zip -r WhisperDesktop-${{ matrix.label }}.zip ${{ matrix.rid }}
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: publish/WhisperDesktop-${{ matrix.label }}.zip
           fail_on_unmatched_files: true

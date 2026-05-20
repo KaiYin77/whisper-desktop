@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = $PSScriptRoot
 $Project = Join-Path $ProjectRoot "WhisperApp.csproj"
-$PublishDir = Join-Path $ProjectRoot "bin\Release\net8.0-windows\win-x64\publish"
+$PublishDir = Join-Path $ProjectRoot "bin\Release\net8.0\win-x64\publish"
 $IssScript = Join-Path $ProjectRoot "installer\WhisperApp.iss"
 
 # --- Step 1: dotnet publish (self-contained, win-x64) ---

@@ -1,17 +1,24 @@
-using Microsoft.Win32;
-using OpenCCNET;
-using NAudio.Wave;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using OpenCCNET;
 using Whisper.net;
 using Whisper.net.Ggml;
 
+#if WINDOWS
+using NAudio.Wave;
+#else
+using FFMpegCore;
+using FFMpegCore.Pipes;
+#endif
 
 namespace WhisperApp;
 
@@ -26,8 +33,8 @@ public partial class MainWindow : Window
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "WhisperApp", "models");
 
-    private readonly Brush _dropZoneNormal = Brushes.White;
-    private readonly Brush _dropZoneHover = new SolidColorBrush(Color.FromRgb(245, 245, 245));
+    private readonly IBrush _dropZoneNormal = Brushes.Transparent;
+    private readonly IBrush _dropZoneHover  = new SolidColorBrush(Color.FromRgb(245, 245, 245));
     private CancellationTokenSource? _transcriptionCts;
 
     public ObservableCollection<TranscriptJob> Jobs { get; } = [];
@@ -36,42 +43,32 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = this;
+
+        DropZone.AddHandler(DragDrop.DropEvent,      DropZone_Drop);
+        DropZone.AddHandler(DragDrop.DragOverEvent,  DropZone_DragOver);
+        DropZone.AddHandler(DragDrop.DragLeaveEvent, DropZone_DragLeave);
     }
 
-    private void ChooseFiles_Click(object sender, RoutedEventArgs e) => ChooseFiles();
-
-    private void DropZone_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e) => ChooseFiles();
-
-    private void DropZone_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+    private void DropZone_PointerEntered(object? sender, PointerEventArgs e)
         => DropZone.Background = _dropZoneHover;
 
-    private void DropZone_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+    private void DropZone_PointerExited(object? sender, PointerEventArgs e)
         => DropZone.Background = _dropZoneNormal;
 
-    private void ChooseFiles()
-    {
-        var dialog = new OpenFileDialog
-        {
-            Title = "Select media files",
-            Multiselect = true,
-            Filter = "Media files|*.mp4;*.mov;*.mkv;*.avi;*.webm;*.mp3;*.wav;*.m4a;*.aac;*.flac;*.ogg;*.wma|All files|*.*"
-        };
+    private void DropZone_PointerReleased(object? sender, PointerReleasedEventArgs e)
+        => _ = ChooseFilesAsync();
 
-        if (dialog.ShowDialog(this) == true)
-            AddFiles(dialog.FileNames);
-    }
-
-    private void DropZone_DragEnter(object sender, DragEventArgs e)
+    private void DropZone_DragOver(object? sender, DragEventArgs e)
     {
-        e.Effects = GetUsableFiles(e).Any() ? DragDropEffects.Copy : DragDropEffects.None;
+        e.DragEffects = e.Data.Contains(DataFormats.Files) ? DragDropEffects.Copy : DragDropEffects.None;
         DropZone.Background = _dropZoneHover;
         e.Handled = true;
     }
 
-    private void DropZone_DragLeave(object sender, DragEventArgs e)
+    private void DropZone_DragLeave(object? sender, RoutedEventArgs e)
         => DropZone.Background = _dropZoneNormal;
 
-    private void DropZone_Drop(object sender, DragEventArgs e)
+    private void DropZone_Drop(object? sender, DragEventArgs e)
     {
         DropZone.Background = _dropZoneNormal;
         var files = GetUsableFiles(e).ToArray();
@@ -83,7 +80,27 @@ public partial class MainWindow : Window
         AddFiles(files);
     }
 
-    private async void StartButton_Click(object sender, RoutedEventArgs e)
+    private async Task ChooseFilesAsync()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select media files",
+            AllowMultiple = true,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Media files")
+                {
+                    Patterns = ["*.mp4", "*.mov", "*.mkv", "*.avi", "*.webm",
+                                "*.mp3", "*.wav", "*.m4a", "*.aac", "*.flac", "*.ogg", "*.wma"]
+                }
+            ]
+        });
+
+        if (files.Count > 0)
+            AddFiles(files.Select(f => f.Path.LocalPath));
+    }
+
+    private async void StartButton_Click(object? sender, RoutedEventArgs e)
     {
         var pendingJobs = Jobs.Where(job => job.State is JobState.Pending or JobState.Failed).ToList();
         if (pendingJobs.Count == 0)
@@ -99,14 +116,14 @@ public partial class MainWindow : Window
 
         try
         {
-            var modelName = ((ComboBoxItem)ModelCombo.SelectedItem).Content?.ToString() ?? "base";
-            var languageTag = ((ComboBoxItem)LanguageCombo.SelectedItem).Tag?.ToString() ?? "";
+            var modelName   = ((ComboBoxItem)ModelCombo.SelectedItem!).Content?.ToString() ?? "base";
+            var languageTag = ((ComboBoxItem)LanguageCombo.SelectedItem!).Tag?.ToString() ?? "";
 
             var modelPath = await EnsureModelAsync(modelName, _transcriptionCts.Token);
 
             var completedBeforeRun = Jobs.Count(job => job.State == JobState.Completed);
-            var totalForProgress = completedBeforeRun + pendingJobs.Count;
-            var done = completedBeforeRun;
+            var totalForProgress   = completedBeforeRun + pendingJobs.Count;
+            var done               = completedBeforeRun;
             UpdateProgress(done, totalForProgress);
 
             foreach (var job in pendingJobs)
@@ -124,7 +141,7 @@ public partial class MainWindow : Window
         {
             foreach (var job in Jobs.Where(job => job.State == JobState.Running))
             {
-                job.State = JobState.Pending;
+                job.State  = JobState.Pending;
                 job.Status = "Waiting";
             }
             SetStatus("Canceled.");
@@ -143,35 +160,43 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    private void CancelButton_Click(object? sender, RoutedEventArgs e)
         => _transcriptionCts?.Cancel();
 
-    private void DownloadButton_Click(object sender, RoutedEventArgs e)
+    private async void DownloadButton_Click(object? sender, RoutedEventArgs e)
     {
-        if ((sender as Button)?.Tag is not TranscriptJob job
-            || string.IsNullOrWhiteSpace(job.OutputPath)
-            || !File.Exists(job.OutputPath))
+        try
         {
-            SetStatus("Transcript file not found.");
-            return;
+            if ((sender as Button)?.Tag is not TranscriptJob job
+                || string.IsNullOrWhiteSpace(job.OutputPath)
+                || !File.Exists(job.OutputPath))
+            {
+                SetStatus("Transcript file not found.");
+                return;
+            }
+
+            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title            = "Save transcript",
+                SuggestedFileName = Path.GetFileName(job.OutputPath),
+                FileTypeChoices  = [new FilePickerFileType("Text file") { Patterns = ["*.txt"] }],
+                DefaultExtension = "txt"
+            });
+
+            if (file == null) return;
+
+            await using var dest = await file.OpenWriteAsync();
+            await using var src  = File.OpenRead(job.OutputPath);
+            await src.CopyToAsync(dest);
+            SetStatus($"Saved to {file.Path.LocalPath}");
         }
-
-        var dialog = new SaveFileDialog
+        catch (Exception ex)
         {
-            Title = "Save transcript",
-            FileName = Path.GetFileName(job.OutputPath),
-            Filter = "Text file|*.txt|All files|*.*",
-            DefaultExt = ".txt"
-        };
-
-        if (dialog.ShowDialog(this) == true)
-        {
-            File.Copy(job.OutputPath, dialog.FileName, overwrite: true);
-            SetStatus($"Saved to {dialog.FileName}");
+            SetStatus($"Save failed: {ex.Message}");
         }
     }
 
-    private void ClearCompleted_Click(object sender, RoutedEventArgs e)
+    private void ClearCompleted_Click(object? sender, RoutedEventArgs e)
     {
         for (var i = Jobs.Count - 1; i >= 0; i--)
         {
@@ -187,7 +212,7 @@ public partial class MainWindow : Window
 
     private async Task TranscribeJobAsync(TranscriptJob job, string modelPath, string language, CancellationToken ct)
     {
-        job.State = JobState.Running;
+        job.State  = JobState.Running;
         job.Status = "Running";
         SetStatus($"Transcribing {job.FileName}");
         AppendLog($"[{job.FileName}] starting");
@@ -195,26 +220,28 @@ public partial class MainWindow : Window
         try
         {
             SetStatus($"Decoding audio — {job.FileName}");
-            var (wavStream, audioDuration) = await Task.Run(() => DecodeToWav(job.FilePath), ct);
+            var (wavStream, audioDuration) = await DecodeToWavAsync(job.FilePath);
             using var _ = wavStream;
+
+            ct.ThrowIfCancellationRequested();
 
             SetStatus($"Transcribing — {job.FileName}");
             var transcript = await TranscribeAsync(modelPath, wavStream, audioDuration, language, ct);
 
-            var outputDir = Path.GetDirectoryName(job.FilePath) ?? Environment.CurrentDirectory;
+            var outputDir  = Path.GetDirectoryName(job.FilePath) ?? Environment.CurrentDirectory;
             var outputPath = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(job.FilePath)}-逐字稿.txt");
             await File.WriteAllTextAsync(outputPath, transcript, Encoding.UTF8, ct);
 
             job.OutputPath = outputPath;
-            job.State = JobState.Completed;
-            job.Status = "Done";
+            job.State      = JobState.Completed;
+            job.Status     = "Done";
             AppendLog($"[{job.FileName}] → {outputPath}");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            job.State = JobState.Failed;
+            job.State  = JobState.Failed;
             job.Status = "Failed";
-            job.Error = ex.Message;
+            job.Error  = ex.Message;
             AppendLog($"[{job.FileName}] failed: {ex.Message}");
         }
     }
@@ -234,19 +261,33 @@ public partial class MainWindow : Window
         SetStatus($"Downloading model '{modelName}'...");
 
         await using var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(MapGgmlType(modelName));
-        await using var fileStream = File.Create(modelPath);
+        await using var fileStream  = File.Create(modelPath);
         await modelStream.CopyToAsync(fileStream, ct);
 
         AppendLog($"Model '{modelName}' downloaded and cached.");
         return modelPath;
     }
 
-    // Decode any audio/video file to 16 kHz mono WAV in memory via Windows Media Foundation.
-    private static (MemoryStream wav, TimeSpan duration) DecodeToWav(string inputPath)
+    // Decode any audio/video file to 16 kHz mono WAV in memory.
+    // Windows uses Windows Media Foundation via NAudio; other platforms use ffmpeg via FFMpegCore.
+    private static Task<(MemoryStream wav, TimeSpan duration)> DecodeToWavAsync(string inputPath)
     {
-        using var reader = new MediaFoundationReader(inputPath);
-        var duration = reader.TotalTime;
-        var targetFormat = new WaveFormat(16000, 16, 1);
+#if WINDOWS
+#pragma warning disable CA1416  // DecodeToWavWindows is only compiled on Windows via #if WINDOWS
+        return Task.Run(() => DecodeToWavWindows(inputPath));
+#pragma warning restore CA1416
+#else
+        return DecodeToWavFfmpegAsync(inputPath);
+#endif
+    }
+
+#if WINDOWS
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static (MemoryStream wav, TimeSpan duration) DecodeToWavWindows(string inputPath)
+    {
+        using var reader    = new MediaFoundationReader(inputPath);
+        var duration        = reader.TotalTime;
+        var targetFormat    = new WaveFormat(16000, 16, 1);
         using var resampler = new MediaFoundationResampler(reader, targetFormat) { ResamplerQuality = 60 };
 
         var ms = new MemoryStream();
@@ -254,6 +295,24 @@ public partial class MainWindow : Window
         ms.Position = 0;
         return (ms, duration);
     }
+#else
+    private static async Task<(MemoryStream wav, TimeSpan duration)> DecodeToWavFfmpegAsync(string inputPath)
+    {
+        var info     = await FFProbe.AnalyseAsync(inputPath);
+        var duration = info.Duration;
+
+        var ms = new MemoryStream();
+        await FFMpegArguments
+            .FromFileInput(inputPath)
+            .OutputToPipe(new StreamPipeSink(ms), options => options
+                .ForceFormat("wav")
+                .WithAudioSamplingRate(16000)
+                .WithCustomArgument("-ac 1 -acodec pcm_s16le"))
+            .ProcessAsynchronously();
+        ms.Position = 0;
+        return (ms, duration);
+    }
+#endif
 
     private async Task<string> TranscribeAsync(
         string modelPath, Stream wavStream, TimeSpan duration, string language, CancellationToken ct)
@@ -275,7 +334,7 @@ public partial class MainWindow : Window
             if (duration > TimeSpan.Zero)
             {
                 var pct = segment.End.TotalSeconds / duration.TotalSeconds * 100.0;
-                Dispatcher.Invoke(() => ProgressBar.Value = Math.Clamp(pct, 0, 100));
+                Dispatcher.UIThread.Post(() => ProgressBar.Value = Math.Clamp(pct, 0, 100));
             }
         }
 
@@ -301,7 +360,7 @@ public partial class MainWindow : Window
 
     private void AddFiles(IEnumerable<string> files)
     {
-        var added = 0;
+        var added    = 0;
         var existing = Jobs.Select(j => j.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var file in files.Where(File.Exists))
@@ -320,9 +379,9 @@ public partial class MainWindow : Window
 
     private void SetBusy(bool isBusy)
     {
-        StartButton.IsEnabled = !isBusy;
+        StartButton.IsEnabled  = !isBusy;
         CancelButton.IsEnabled = isBusy;
-        ModelCombo.IsEnabled = !isBusy;
+        ModelCombo.IsEnabled   = !isBusy;
         LanguageCombo.IsEnabled = !isBusy;
     }
 
@@ -330,22 +389,26 @@ public partial class MainWindow : Window
 
     private void AppendLog(string message)
     {
-        LogText.AppendText(message + Environment.NewLine);
-        LogText.ScrollToEnd();
+        var text = (LogText.Text ?? "") + message + Environment.NewLine;
+        LogText.Text = text;
+        LogText.CaretIndex = text.Length;
     }
 
-    private void ClearLog() => LogText.Clear();
+    private void ClearLog() => LogText.Text = "";
 
     private void UpdateProgress(int completed, int total)
         => ProgressBar.Value = total <= 0 ? 0 : completed * 100.0 / total;
 
     private static IEnumerable<string> GetUsableFiles(DragEventArgs e)
     {
-        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+        if (!e.Data.Contains(DataFormats.Files))
             return [];
 
-        var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-        return files.Where(f => File.Exists(f) && SupportedExtensions.Contains(Path.GetExtension(f)));
+        return e.Data.GetFiles()
+            ?.OfType<IStorageFile>()
+            .Select(f => f.Path.LocalPath)
+            .Where(path => File.Exists(path) && SupportedExtensions.Contains(Path.GetExtension(path)))
+            ?? [];
     }
 }
 
@@ -353,10 +416,10 @@ public enum JobState { Pending, Running, Completed, Failed }
 
 public sealed class TranscriptJob : INotifyPropertyChanged
 {
-    private string _status = "Waiting";
-    private string? _outputPath;
-    private string? _error;
-    private JobState _state = JobState.Pending;
+    private string   _status    = "Waiting";
+    private string?  _outputPath;
+    private string?  _error;
+    private JobState _state     = JobState.Pending;
 
     public TranscriptJob(string filePath)
     {

@@ -1,205 +1,88 @@
-<Window x:Class="WhisperApp.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d"
-        Title="OpenAI Whisper &#x9010;&#x5B57;&#x7A3F;"
-        Icon="app-icon.ico"
+        x:Class="WhisperApp.MainWindow"
+        Title="Whisper 逐字稿"
         Width="820"
         Height="520"
         MinWidth="760"
         MinHeight="480"
-        FontFamily="Segoe UI Variable Text, Segoe UI"
+        FontFamily="Segoe UI Variable Text, Segoe UI, system-ui"
         Background="#F3F3F3">
+
     <Window.Resources>
-        <SolidColorBrush x:Key="WinTextPrimary" Color="#1B1B1B" />
+        <SolidColorBrush x:Key="WinTextPrimary"   Color="#1B1B1B" />
         <SolidColorBrush x:Key="WinTextSecondary" Color="#5E5E5E" />
-        <SolidColorBrush x:Key="WinCard" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="WinControl" Color="#FBFBFB" />
-        <SolidColorBrush x:Key="WinControlHover" Color="#F6F6F6" />
-        <SolidColorBrush x:Key="WinStroke" Color="#DADCE0" />
-        <SolidColorBrush x:Key="WinSubtleStroke" Color="#E9EAEC" />
-        <SolidColorBrush x:Key="WinAccent" Color="#0078D4" />
-        <SolidColorBrush x:Key="WinAccentHover" Color="#106EBE" />
+        <SolidColorBrush x:Key="WinCard"          Color="#FFFFFF" />
+        <SolidColorBrush x:Key="WinControl"       Color="#FBFBFB" />
+        <SolidColorBrush x:Key="WinControlHover"  Color="#F6F6F6" />
+        <SolidColorBrush x:Key="WinStroke"        Color="#DADCE0" />
+        <SolidColorBrush x:Key="WinSubtleStroke"  Color="#E9EAEC" />
+        <SolidColorBrush x:Key="WinAccent"        Color="#0078D4" />
+        <SolidColorBrush x:Key="WinAccentHover"   Color="#106EBE" />
         <SolidColorBrush x:Key="WinAccentPressed" Color="#005A9E" />
-        <SolidColorBrush x:Key="WinAccentSoft" Color="#E5F1FB" />
+        <SolidColorBrush x:Key="WinAccentSoft"    Color="#E5F1FB" />
 
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource WinTextPrimary}" />
-            <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
-        </Style>
-
-        <Style x:Key="WinButton" TargetType="Button">
-            <Setter Property="MinHeight" Value="32" />
-            <Setter Property="Padding" Value="14,6" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Foreground" Value="{StaticResource WinTextPrimary}" />
-            <Setter Property="Background" Value="{StaticResource WinControl}" />
-            <Setter Property="BorderBrush" Value="{StaticResource WinStroke}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Cursor" Value="Hand" />
+        <!-- Custom button ControlTheme — overrides FluentTheme for all buttons in this window -->
+        <ControlTheme x:Key="{x:Type Button}" TargetType="Button">
+            <Setter Property="Background"               Value="{StaticResource WinControl}" />
+            <Setter Property="Foreground"               Value="{StaticResource WinTextPrimary}" />
+            <Setter Property="BorderBrush"              Value="{StaticResource WinStroke}" />
+            <Setter Property="BorderThickness"          Value="1" />
+            <Setter Property="CornerRadius"             Value="4" />
+            <Setter Property="MinHeight"                Value="32" />
+            <Setter Property="Padding"                  Value="14,6" />
+            <Setter Property="FontSize"                 Value="14" />
+            <Setter Property="Cursor"                   Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment"   Value="Center" />
             <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Root"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              Margin="{TemplateBinding Padding}" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource WinAccent}" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Root" Property="Opacity" Value="0.45" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
+                <ControlTemplate>
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          Margin="{TemplateBinding Padding}"
+                                          Content="{TemplateBinding Content}" />
+                    </Border>
+                </ControlTemplate>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource WinControlHover}" />
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#EEEEEE" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="WinPrimaryButton" TargetType="Button" BasedOn="{StaticResource WinButton}">
-            <Setter Property="Foreground" Value="#FFFFFF" />
-            <Setter Property="Background" Value="{StaticResource WinAccent}" />
-            <Setter Property="BorderBrush" Value="{StaticResource WinAccent}" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource WinAccentHover}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource WinAccentHover}" />
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="{StaticResource WinAccentPressed}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource WinAccentPressed}" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style TargetType="ComboBoxItem">
-            <Setter Property="MinHeight" Value="32" />
-            <Setter Property="Padding" Value="10,6" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Foreground" Value="{StaticResource WinTextPrimary}" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBoxItem">
-                        <Border x:Name="ItemRoot"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="{StaticResource WinAccentSoft}" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#DCEBFA" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="ComboBox">
-            <Setter Property="MinHeight" Value="32" />
-            <Setter Property="MinWidth" Value="124" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Foreground" Value="{StaticResource WinTextPrimary}" />
-            <Setter Property="Background" Value="{StaticResource WinControl}" />
-            <Setter Property="BorderBrush" Value="{StaticResource WinStroke}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <ToggleButton x:Name="ToggleButton"
-                                          Background="{TemplateBinding Background}"
-                                          BorderBrush="{TemplateBinding BorderBrush}"
-                                          BorderThickness="{TemplateBinding BorderThickness}"
-                                          Focusable="False"
-                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                          ClickMode="Press">
-                                <ToggleButton.Template>
-                                    <ControlTemplate TargetType="ToggleButton">
-                                        <Border x:Name="Root"
-                                                Background="{TemplateBinding Background}"
-                                                BorderBrush="{TemplateBinding BorderBrush}"
-                                                BorderThickness="{TemplateBinding BorderThickness}"
-                                                CornerRadius="4">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="30" />
-                                                </Grid.ColumnDefinitions>
-                                                <ContentPresenter Grid.Column="0"
-                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
-                                                                  ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}}"
-                                                                  VerticalAlignment="Center"
-                                                                  Margin="10,0,0,1" />
-                                                <Path Grid.Column="1"
-                                                      Data="M 0 0 L 4 4 L 8 0 Z"
-                                                      Fill="{StaticResource WinTextSecondary}"
-                                                      Width="8"
-                                                      Height="4"
-                                                      Stretch="Fill"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center" />
-                                            </Grid>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Root" Property="Background" Value="{StaticResource WinControlHover}" />
-                                            </Trigger>
-                                            <Trigger Property="IsChecked" Value="True">
-                                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource WinAccent}" />
-                                            </Trigger>
-                                            <Trigger Property="IsEnabled" Value="False">
-                                                <Setter TargetName="Root" Property="Opacity" Value="0.45" />
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </ToggleButton.Template>
-                            </ToggleButton>
-                            <Popup x:Name="PART_Popup"
-                                   Placement="Bottom"
-                                   AllowsTransparency="True"
-                                   Focusable="False"
-                                   IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   PopupAnimation="Fade">
-                                <Border Background="#FFFFFF"
-                                        BorderBrush="{StaticResource WinStroke}"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="4"
-                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
-                                    <ScrollViewer MaxHeight="240">
-                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+            <Style Selector="^:pointerover /template/ Border#Root">
+                <Setter Property="Background" Value="{StaticResource WinControlHover}" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#Root">
+                <Setter Property="Background" Value="#EEEEEE" />
+            </Style>
+            <Style Selector="^:disabled">
+                <Setter Property="Opacity" Value="0.45" />
+            </Style>
+            <!-- .primary class — filled accent button -->
+            <Style Selector="^.primary">
+                <Setter Property="Background"  Value="{StaticResource WinAccent}" />
+                <Setter Property="BorderBrush" Value="{StaticResource WinAccent}" />
+                <Setter Property="Foreground"  Value="White" />
+            </Style>
+            <Style Selector="^.primary:pointerover /template/ Border#Root">
+                <Setter Property="Background" Value="{StaticResource WinAccentHover}" />
+            </Style>
+            <Style Selector="^.primary:pressed /template/ Border#Root">
+                <Setter Property="Background" Value="{StaticResource WinAccentPressed}" />
+            </Style>
+        </ControlTheme>
     </Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource WinTextPrimary}" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="MinWidth"  Value="124" />
+            <Setter Property="FontSize"  Value="14" />
+        </Style>
+    </Window.Styles>
 
     <Border Margin="10"
             Background="{StaticResource WinCard}"
@@ -214,22 +97,19 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-
+            <!-- ── Drop zone ── -->
             <Border x:Name="DropZone"
                     Grid.Row="0"
-                    AllowDrop="True"
+                    DragDrop.AllowDrop="True"
                     Background="#FAFAFA"
                     BorderBrush="{StaticResource WinStroke}"
                     BorderThickness="1"
                     CornerRadius="8"
                     Padding="22"
                     Cursor="Hand"
-                    MouseEnter="DropZone_MouseEnter"
-                    MouseLeave="DropZone_MouseLeave"
-                    MouseLeftButtonUp="DropZone_MouseLeftButtonUp"
-                    DragEnter="DropZone_DragEnter"
-                    DragLeave="DropZone_DragLeave"
-                    Drop="DropZone_Drop">
+                    PointerEntered="DropZone_PointerEntered"
+                    PointerExited="DropZone_PointerExited"
+                    PointerReleased="DropZone_PointerReleased">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="56" />
@@ -255,10 +135,10 @@
                     </Border>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="&#x62D6;&#x66F3;&#x97F3;&#x8A0A;&#x6216;&#x5F71;&#x7247;&#x5230;&#x9019;&#x88E1;&#xFF0C;&#x6216;&#x9EDE;&#x64CA;&#x9078;&#x64C7;&#x6A94;&#x6848;"
+                        <TextBlock Text="拖曳音訊或影片到這裡，或點擊選擇檔案"
                                    FontSize="15"
                                    FontWeight="SemiBold" />
-                        <TextBlock Text="&#x652F;&#x63F4; mp3&#x3001;wav&#x3001;m4a&#x3001;webm&#x3001;mp4&#x3001;mov&#x3001;mkv&#xFF0C;&#x53EF;&#x4E00;&#x6B21;&#x52A0;&#x5165;&#x591A;&#x500B;&#x6A94;&#x6848;"
+                        <TextBlock Text="支援 mp3、wav、m4a、webm、mp4、mov、mkv，可一次加入多個檔案"
                                    Foreground="{StaticResource WinTextSecondary}"
                                    FontSize="13"
                                    Margin="0,5,0,0" />
@@ -266,6 +146,7 @@
                 </Grid>
             </Border>
 
+            <!-- ── Controls + file list ── -->
             <Grid Grid.Row="1" Margin="0,16,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -284,90 +165,77 @@
                             <ComboBoxItem Content="large-v3" />
                         </ComboBox>
                         <ComboBox x:Name="LanguageCombo" SelectedIndex="1" Margin="10,0,0,0">
-                            <ComboBoxItem Content="&#x81EA;&#x52D5;&#x5075;&#x6E2C;" Tag="" />
-                            <ComboBoxItem Content="&#x4E2D;&#x6587;" Tag="zh" />
-                            <ComboBoxItem Content="English" Tag="en" />
-                            <ComboBoxItem Content="&#x65E5;&#x672C;&#x8A9E;" Tag="ja" />
-                            <ComboBoxItem Content="&#xD55C;&#xAD6D;&#xC5B4;" Tag="ko" />
+                            <ComboBoxItem Content="自動偵測" Tag="" />
+                            <ComboBoxItem Content="中文"     Tag="zh" />
+                            <ComboBoxItem Content="English"  Tag="en" />
+                            <ComboBoxItem Content="日本語"   Tag="ja" />
+                            <ComboBoxItem Content="한국어"   Tag="ko" />
                         </ComboBox>
                     </StackPanel>
 
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button x:Name="StartButton"
-                                Content="&#x958B;&#x59CB;&#x8F49;&#x9304;"
+                                Content="開始轉錄"
                                 Width="104"
-                                Style="{StaticResource WinPrimaryButton}"
+                                Classes="primary"
                                 Click="StartButton_Click" />
                         <Button x:Name="CancelButton"
-                                Content="&#x53D6;&#x6D88;"
+                                Content="取消"
                                 Width="74"
                                 Margin="10,0,0,0"
-                                Style="{StaticResource WinButton}"
                                 IsEnabled="False"
                                 Click="CancelButton_Click" />
                     </StackPanel>
                 </DockPanel>
 
-                <ListView x:Name="FilesList"
-                          Grid.Row="1"
-                          ItemsSource="{Binding Jobs}"
-                          BorderThickness="0"
-                          Background="Transparent"
-                          Margin="0,14,0,0"
-                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                            <Setter Property="Padding" Value="0" />
-                            <Setter Property="Margin" Value="0,0,0,8" />
-                            <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="BorderThickness" Value="0" />
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <Border BorderBrush="{StaticResource WinSubtleStroke}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Padding="11"
-                                    Background="Transparent"
-                                    ClipToBounds="True">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="105" />
-                                        <ColumnDefinition Width="96" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding FileName}"
-                                                   FontSize="14"
-                                                   FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   TextWrapping="NoWrap" />
-                                        <TextBlock Text="{Binding FilePath}"
-                                                   Foreground="{StaticResource WinTextSecondary}"
-                                                   FontSize="12"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   TextWrapping="NoWrap"
-                                                   Margin="0,3,0,0" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Status}"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource WinTextSecondary}" />
-                                    <Button Grid.Column="2"
-                                            Content="&#x4E0B;&#x8F09; txt"
-                                            Tag="{Binding}"
-                                            IsEnabled="{Binding CanDownload}"
-                                            Style="{StaticResource WinButton}"
-                                            Click="DownloadButton_Click" />
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
+                <ScrollViewer Grid.Row="1"
+                              Margin="0,14,0,0"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="FilesList" ItemsSource="{Binding Jobs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource WinSubtleStroke}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="11"
+                                        Margin="0,0,0,8"
+                                        Background="Transparent">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="105" />
+                                            <ColumnDefinition Width="96" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding FileName}"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding FilePath}"
+                                                       Foreground="{StaticResource WinTextSecondary}"
+                                                       FontSize="12"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Margin="0,3,0,0" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding Status}"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource WinTextSecondary}" />
+                                        <Button Grid.Column="2"
+                                                Content="下載 txt"
+                                                Tag="{Binding}"
+                                                IsEnabled="{Binding CanDownload}"
+                                                Click="DownloadButton_Click" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Grid>
 
+            <!-- ── Log ── -->
             <Grid Grid.Row="2" Margin="0,12,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -384,17 +252,18 @@
                          Height="74"
                          IsReadOnly="True"
                          AcceptsReturn="True"
-                         VerticalScrollBarVisibility="Auto"
-                         HorizontalScrollBarVisibility="Disabled"
                          TextWrapping="Wrap"
                          FontFamily="Consolas"
                          FontSize="12"
                          Background="#FCFCFC"
                          BorderBrush="{StaticResource WinSubtleStroke}"
                          BorderThickness="1"
-                         Padding="8" />
+                         Padding="8"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
             </Grid>
 
+            <!-- ── Progress + status ── -->
             <Grid Grid.Row="3" Margin="0,12,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -412,16 +281,15 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="StatusText"
                                Grid.Column="0"
-                               Text="&#x7B49;&#x5F85;&#x6A94;&#x6848;"
+                               Text="等待檔案"
                                Foreground="{StaticResource WinTextSecondary}"
                                FontSize="13"
                                VerticalAlignment="Center" />
                     <Button Grid.Column="1"
-                            Content="&#x6E05;&#x9664;&#x5B8C;&#x6210;&#x9805;&#x76EE;"
+                            Content="清除完成項目"
                             MinWidth="112"
                             MinHeight="30"
                             Padding="10,4"
-                            Style="{StaticResource WinButton}"
                             HorizontalAlignment="Right"
                             Click="ClearCompleted_Click" />
                 </Grid>

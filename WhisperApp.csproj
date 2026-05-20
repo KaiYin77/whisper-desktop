@@ -1,20 +1,37 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
-    <ApplicationIcon>app-icon.ico</ApplicationIcon>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">app-icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Define WINDOWS when building on Windows so #if WINDOWS guards work -->
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
-    <Resource Include="app-icon.ico" />
-    <Resource Include="logo.png" />
+    <!-- Explicitly register .xaml files as AvaloniaXaml so the source generator sees them.
+         Avalonia auto-includes only *.axaml; *.xaml must be declared manually. -->
+    <None Remove="App.xaml" />
+    <None Remove="MainWindow.xaml" />
+    <AvaloniaXaml Include="App.xaml" />
+    <AvaloniaXaml Include="MainWindow.xaml" />
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="app-icon.ico" />
+    <AvaloniaResource Include="logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.0" />
+    <PackageReference Include="FFMpegCore" Version="5.1.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="OpenCCNET" Version="1.1.0" />
     <PackageReference Include="Whisper.net" Version="1.9.0" />

@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  A Windows desktop app for transcribing audio and video files using a <strong>local</strong> Whisper model — no cloud API, no Python, no ffmpeg, no internet required after first run.
+  A cross-platform desktop app for transcribing audio and video files using a <strong>local</strong> Whisper model — no cloud API, no Python, no internet required after first run.
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/KaiYin77/whisper-app?label=download&color=0078D4" alt="Latest release" /></a>
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/KaiYin77/whisper-desktop?label=download&color=0078D4" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-blue" alt="Platform" />
   <img src="https://img.shields.io/badge/.NET-8.0-512bd4" alt=".NET 8" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
@@ -36,10 +36,11 @@
 
 | Requirement | Notes |
 |-------------|-------|
-| Windows 10 / 11 (64-bit) | Uses Windows Media Foundation for audio decoding |
+| Windows 10 / 11 (64-bit) | Uses Windows Media Foundation for audio decoding — no extra install needed |
+| macOS 12+ (Apple Silicon or Intel) | Requires `ffmpeg`: `brew install ffmpeg` |
 | Internet connection (first run only) | To download the selected Whisper model (~75 MB–3 GB depending on model) |
 
-That's it. No Python. No ffmpeg.
+No Python required on either platform.
 
 ---
 
@@ -47,9 +48,12 @@ That's it. No Python. No ffmpeg.
 
 ### Option A — Download the installer (recommended)
 
-1. Go to the [**Releases**](../../releases/latest) page and download `WhisperApp-Setup.exe`.
-2. Run the installer and follow the prompts.
-3. Launch **WhisperApp** from the Start Menu or desktop shortcut.
+**Windows** — download `WhisperApp-Setup.exe` from the [**Releases**](../../releases/latest) page, run it, and launch from the Start Menu.
+
+**macOS** — download the zip for your chip (`macOS-Apple-Silicon` for M1/M2/M3, `macOS-Intel` for older Macs) from the [**Releases**](../../releases/latest) page. Unzip, then run the binary. You also need ffmpeg installed once:
+```
+brew install ffmpeg
+```
 
 ### Option B — Run from source
 
@@ -103,8 +107,8 @@ See [Development](#development) below.
 ### Clone and run
 
 ```powershell
-git clone https://github.com/KaiYin77/whisper-app.git
-cd whisper-app
+git clone https://github.com/KaiYin77/whisper-desktop.git
+cd whisper-desktop
 dotnet run
 ```
 
