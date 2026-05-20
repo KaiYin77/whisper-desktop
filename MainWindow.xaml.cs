@@ -200,7 +200,7 @@ public partial class MainWindow : Window
             var transcript = await TranscribeAsync(modelPath, wavStream, language, ct);
 
             var outputDir = Path.GetDirectoryName(job.FilePath) ?? Environment.CurrentDirectory;
-            var outputPath = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(job.FilePath)}.逐字稿.txt");
+            var outputPath = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(job.FilePath)}-逐字稿.txt");
             await File.WriteAllTextAsync(outputPath, transcript, Encoding.UTF8, ct);
 
             job.OutputPath = outputPath;
@@ -265,11 +265,7 @@ public partial class MainWindow : Window
 
         var sb = new StringBuilder();
         await foreach (var segment in processor.ProcessAsync(wavStream, ct))
-        {
             sb.Append(segment.Text);
-            var text = segment.Text;
-            Dispatcher.Invoke(() => AppendLog(text));
-        }
 
         return sb.ToString().Trim();
     }
