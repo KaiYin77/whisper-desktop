@@ -1,0 +1,78 @@
+name: Compatibility Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-win11:
+    name: Build on Windows 11
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore WhisperDesktop.csproj
+
+      - name: Build
+        run: dotnet build WhisperDesktop.csproj -c Release --no-restore
+
+      - name: Publish win-x64
+        run: dotnet publish WhisperDesktop.csproj -c Release -f net8.0 -r win-x64 --self-contained true -o publish/win-x64
+
+      - name: Runtime smoke test (Windows)
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path "publish/win-x64/WhisperDesktop.exe"
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) {
+            throw "Smoke test failed: process exited early with code $($p.ExitCode)."
+          }
+          Stop-Process -Id $p.Id -Force
+
+  build-macos-apple-silicon:
+    name: Build on macOS Apple Silicon
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install ffmpeg
+        run: brew install ffmpeg
+
+      - name: Restore
+        run: dotnet restore WhisperDesktop.csproj
+
+      - name: Build
+        run: dotnet build WhisperDesktop.csproj -c Release --no-restore
+
+      - name: Publish osx-arm64
+        run: dotnet publish WhisperDesktop.csproj -c Release -f net8.0 -r osx-arm64 --self-contained true -o publish/osx-arm64
+
+      - name: Runtime smoke test (macOS)
+        run: |
+          chmod +x publish/osx-arm64/WhisperDesktop
+          set +e
+          ./publish/osx-arm64/WhisperDesktop > smoke.log 2>&1 &
+          APP_PID=$!
+          sleep 8
+          if ! kill -0 "$APP_PID" 2>/dev/null; then
+            echo "Smoke test failed: process exited early."
+            cat smoke.log
+            exit 1
+          fi
+          kill "$APP_PID"

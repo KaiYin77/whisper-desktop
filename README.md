@@ -21,14 +21,14 @@
 
 **Windows** — 至 [Releases](../../releases/latest) 下載 `WhisperDesktop-Setup.exe` 並執行。
 
-**macOS** — 先安裝 ffmpeg（僅需一次），再下載對應 zip：
+**macOS** — 先安裝 ffmpeg（僅需一次），再下載對應 dmg：
 
 ```bash
 brew install ffmpeg
 ```
 
-- Apple Silicon (M1/M2/M3)：下載 `WhisperDesktop-macOS-Apple-Silicon.zip`
-- Intel Mac：下載 `WhisperDesktop-macOS-Intel.zip`
+- Apple Silicon (M1/M2/M3)：下載 `WhisperDesktop-macOS-Apple-Silicon.dmg`
+- Intel Mac：下載 `WhisperDesktop-macOS-Intel.dmg`
 
 ---
 
@@ -58,7 +58,7 @@ git tag v2.1.0
 git push origin v2.1.0
 ```
 
-推送 tag 後 GitHub Actions 自動建置 Windows 安裝檔與 macOS zip 並發布至 Releases。
+推送 tag 後 GitHub Actions 自動建置 Windows 安裝檔與 macOS dmg 並發布至 Releases。
 
 ---
 
@@ -70,6 +70,15 @@ git push origin v2.1.0
 | 音訊解碼 | NAudio (Windows) / FFMpegCore (macOS) |
 | 中文轉換 | [OpenCCNET](https://github.com/laisuk/OpenccNET) 1.1 |
 | UI | [Avalonia](https://avaloniaui.net/) 11.1 |
+
+### 相容性檢查（CI）
+
+- Windows 11（`windows-2022` runner）：`dotnet build` + `win-x64` publish
+- macOS Apple Silicon（`macos-14` runner）：`dotnet build` + `osx-arm64` publish
+- 兩平台皆包含 runtime smoke test（啟動程式 8 秒並確認未提早崩潰）
+- 發版 workflow 額外產生 `osx-arm64` / `osx-x64` 的 dmg
+- 若設定下列 GitHub Secrets，release workflow 會自動執行 macOS 簽章與 notarization：  
+  `MACOS_CERT_BASE64`、`MACOS_CERT_PASSWORD`、`MACOS_CODESIGN_IDENTITY`、`APPLE_NOTARY_APPLE_ID`、`APPLE_NOTARY_TEAM_ID`、`APPLE_NOTARY_APP_PASSWORD`
 
 ---
 
