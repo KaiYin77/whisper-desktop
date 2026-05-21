@@ -36,16 +36,18 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
 
-  # ── macOS app bundle (.zip) ───────────────────────────────────────────────
+  # ── macOS app bundle (.dmg) ───────────────────────────────────────────────
   build-macos:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
           - rid: osx-arm64
             label: macOS-Apple-Silicon
+            runner: macos-14
           - rid: osx-x64
             label: macOS-Intel
+            runner: macos-13
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,13 +69,127 @@ jobs:
             --self-contained true \
             -o publish/${{ matrix.rid }}
 
-      - name: Create zip
+      - name: Build .app bundle
         run: |
-          cd publish
-          zip -r WhisperDesktop-${{ matrix.label }}.zip ${{ matrix.rid }}
+          APP_NAME="WhisperDesktop"
+          APP_ROOT="publish/${APP_NAME}.app"
+          RID_DIR="publish/${{ matrix.rid }}"
+
+          mkdir -p "${APP_ROOT}/Contents/MacOS"
+          mkdir -p "${APP_ROOT}/Contents/Resources"
+
+          cp -R "${RID_DIR}/." "${APP_ROOT}/Contents/MacOS/"
+          cp app-icon.ico "${APP_ROOT}/Contents/Resources/app-icon.ico"
+
+          cat > "${APP_ROOT}/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>WhisperDesktop</string>
+            <key>CFBundleDisplayName</key>
+            <string>WhisperDesktop</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.kaiyin77.whisperdesktop</string>
+            <key>CFBundleVersion</key>
+            <string>${{ github.ref_name }}</string>
+            <key>CFBundleShortVersionString</key>
+            <string>${{ github.ref_name }}</string>
+            <key>CFBundleExecutable</key>
+            <string>WhisperDesktop</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>12.0</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+            <key>CFBundleIconFile</key>
+            <string>app-icon.ico</string>
+          </dict>
+          </plist>
+          PLIST
+
+          chmod +x "${APP_ROOT}/Contents/MacOS/WhisperDesktop"
+
+      - name: Sign .app (optional)
+        if: ${{ secrets.MACOS_CERT_BASE64 != '' && secrets.MACOS_CERT_PASSWORD != '' && secrets.MACOS_CODESIGN_IDENTITY != '' }}
+        env:
+          MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/codesign.p12"
+          APP_PATH="publish/WhisperDesktop.app"
+
+          echo "$MACOS_CERT_BASE64" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "" "$KEYCHAIN_PATH"
+          security set-keychain-settings "$KEYCHAIN_PATH"
+          security unlock-keychain -p "" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN_PATH"
+
+          codesign --force --deep --options runtime --timestamp \
+            --sign "$MACOS_CODESIGN_IDENTITY" \
+            "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
+      - name: Runtime smoke test (.app)
+        run: |
+          APP_BIN="publish/WhisperDesktop.app/Contents/MacOS/WhisperDesktop"
+          set +e
+          "$APP_BIN" > smoke.log 2>&1 &
+          APP_PID=$!
+          sleep 8
+          if ! kill -0 "$APP_PID" 2>/dev/null; then
+            echo "Smoke test failed: .app exited early."
+            cat smoke.log
+            exit 1
+          fi
+          kill "$APP_PID"
+
+      - name: Create dmg
+        run: |
+          APP_NAME="WhisperDesktop"
+          STAGE_DIR="publish/dmg-stage-${{ matrix.rid }}"
+          mkdir -p "${STAGE_DIR}"
+          cp -R "publish/${APP_NAME}.app" "${STAGE_DIR}/"
+          ln -s /Applications "${STAGE_DIR}/Applications"
+
+          hdiutil create \
+            -volname "${APP_NAME}" \
+            -srcfolder "${STAGE_DIR}" \
+            -ov \
+            -format UDZO \
+            "publish/${APP_NAME}-${{ matrix.label }}.dmg"
+
+      - name: Sign dmg (optional)
+        if: ${{ secrets.MACOS_CODESIGN_IDENTITY != '' }}
+        env:
+          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+        run: |
+          codesign --force --timestamp \
+            --sign "$MACOS_CODESIGN_IDENTITY" \
+            "publish/WhisperDesktop-${{ matrix.label }}.dmg"
+
+      - name: Notarize dmg + staple (optional)
+        if: ${{ secrets.APPLE_NOTARY_APPLE_ID != '' && secrets.APPLE_NOTARY_TEAM_ID != '' && secrets.APPLE_NOTARY_APP_PASSWORD != '' }}
+        env:
+          APPLE_NOTARY_APPLE_ID: ${{ secrets.APPLE_NOTARY_APPLE_ID }}
+          APPLE_NOTARY_TEAM_ID: ${{ secrets.APPLE_NOTARY_TEAM_ID }}
+          APPLE_NOTARY_APP_PASSWORD: ${{ secrets.APPLE_NOTARY_APP_PASSWORD }}
+        run: |
+          xcrun notarytool submit "publish/WhisperDesktop-${{ matrix.label }}.dmg" \
+            --apple-id "$APPLE_NOTARY_APPLE_ID" \
+            --team-id "$APPLE_NOTARY_TEAM_ID" \
+            --password "$APPLE_NOTARY_APP_PASSWORD" \
+            --wait
+          xcrun stapler staple "publish/WhisperDesktop-${{ matrix.label }}.dmg"
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: publish/WhisperDesktop-${{ matrix.label }}.zip
+          files: publish/WhisperDesktop-${{ matrix.label }}.dmg
           fail_on_unmatched_files: true
